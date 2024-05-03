@@ -21,7 +21,7 @@
     (when (not= msg.type :clock)
       (crow_out.update msg))))
 
-(fn get_midi_devices []
+(fn get_midi_device_names []
   (fcollect [i 1 (length midi.vports)]
     (. midi.vports i :name)))
 
@@ -35,7 +35,7 @@
   (params:add {:type :option
                :id :trinkets_midi_in_device
                :name "midi in"
-               :options (get_midi_devices)
+               :options (get_midi_device_names)
                :default 1
                :action set_midi_device})
   (crow_out.init)

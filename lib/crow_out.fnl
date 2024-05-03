@@ -1,10 +1,5 @@
-(fn n2v [n]
-  "Convert a MIDI note to a control voltage"
-  (/ n 12))
-
-(fn cc2v [cc]
-  "Convert a MIDI CC value to a control voltage"
-  (/ cc 127))
+(local list (includefnl :lib/list))
+(local volt (includefnl :lib/volt))
 
 (fn set_crow_out_volts [state volts]
   "Set the voltage at the given crow output. Returns the state for threading"
@@ -37,7 +32,7 @@
 (fn update_crow_out_voct [state]
   "Recalculate the crow output voltage from the current note and pitchbend
   state. Returns the state for threading"
-  (let [volts (+ state.volt_offset (n2v state.note) state.pitchbend)]
+  (let [volts (+ state.volt_offset (volt.n2v state.note) state.pitchbend)]
     (set_crow_out_volts state volts))
   state)
 
@@ -149,7 +144,7 @@
   (CrowOutMode.cleanup state))
 
 (fn CrowOutVelocity.midi.note_on [state msg]
-  (let [volts (* state.volt_range (cc2v msg.vel))]
+  (let [volts (* state.volt_range (volt.cc2v msg.vel))]
     (-> state
         (set_crow_out_note msg.note)
         (set_crow_out_volts volts))))
@@ -207,12 +202,6 @@
               CONTROL_MODE_NAME CrowOutControl
               CLOCK_MODE_NAME CrowOutClock})
 
-(fn find_index [list elem]
-  "Find the index of an element in a list. Returns nil if the element is not
-  found"
-  (accumulate [index nil i val (ipairs list) &until (not= index nil)]
-    (when (= val elem) i)))
-
 ; Order of mode options in the params menu
 (local MODE_OPTIONS [NOTE_MODE_NAME
                      GATE_MODE_NAME
@@ -222,10 +211,10 @@
                      CLOCK_MODE_NAME])
 
 ; Look up the index of modes in the options to choose some sensible defaults
-(local NOTE_MODE (find_index MODE_OPTIONS NOTE_MODE_NAME))
-(local GATE_MODE (find_index MODE_OPTIONS GATE_MODE_NAME))
-(local VELOCITY_MODE (find_index MODE_OPTIONS VELOCITY_MODE_NAME))
-(local CONTROL_MODE (find_index MODE_OPTIONS CONTROL_MODE_NAME))
+(local NOTE_MODE (list.find_index MODE_OPTIONS NOTE_MODE_NAME))
+(local GATE_MODE (list.find_index MODE_OPTIONS GATE_MODE_NAME))
+(local VELOCITY_MODE (list.find_index MODE_OPTIONS VELOCITY_MODE_NAME))
+(local CONTROL_MODE (list.find_index MODE_OPTIONS CONTROL_MODE_NAME))
 
 (fn get_mode_name [mode_index]
   "Get the name of the mode using its index in the params menu options"
@@ -289,7 +278,7 @@
 (fn set_crow_out_control [state value]
   "Set the crow output control value. Returns the state for threading"
   (when (= state.mode_name :CONTROL)
-    (let [volts (+ state.volt_offset (* state.volt_range (cc2v value)))]
+    (let [volts (+ state.volt_offset (* state.volt_range (volt.cc2v value)))]
       (set_crow_out_volts state volts)))
   state)
 
