@@ -43,6 +43,7 @@
   (start_redraw))
 
 (fn cleanup []
+  (crow_out.cleanup)
   (stop_redraw))
 
 (fn redraw []

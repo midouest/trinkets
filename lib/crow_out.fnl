@@ -453,5 +453,10 @@
   (each [_ state (ipairs states)]
     (update_state state msg)))
 
-{: init : update}
+(fn cleanup []
+  "Reset all crow output states"
+  (each [_ state (ipairs states)]
+    (state.mode.cleanup state)))
+
+{: init : update : cleanup}
 
