@@ -2,39 +2,33 @@
 (local volt (includefnl :lib/volt))
 
 (fn set_crow_out_volts [state volts]
-  "Set the voltage at the given crow output. Returns the state for threading"
-  (tset crow.output state.output_index :volts volts)
-  state)
+  "Set the voltage at the given crow output."
+  (tset crow.output state.output_index :volts volts))
 
 (fn reset_crow_out_volts [state]
-  "Set the voltage at the given crow output to zero. Returns the state for
-  threading"
-  (set_crow_out_volts state 0)
-  state)
+  "Set the voltage at the given crow output to zero."
+  (set_crow_out_volts state 0))
 
 (fn set_crow_out_note [state note]
   "Update the crow out state with the current midi note. Call
   `update_crow_out_voct` to recalculate the output voltage from the current note
-  and pitchbend state. Returns the state for threading"
-  (set state.note note)
-  state)
+  and pitchbend state."
+  (set state.note note))
 
 (fn set_crow_out_pitchbend [state value]
   "Update the crow out state with the current pitchbend value. Call
   `update_crow_out_voct` to recalculate the output voltage from the current note
-  and pitchbend state. Returns the state for threading"
+  and pitchbend state."
   (let [pitchbend_range_v (/ state.pitchbend_range 12)
         pitchbend_normalized (/ (- value 8192) 8192)
         pitchbend_v (* pitchbend_range_v pitchbend_normalized)]
-    (set state.pitchbend pitchbend_v))
-  state)
+    (set state.pitchbend pitchbend_v)))
 
 (fn update_crow_out_voct [state]
   "Recalculate the crow output voltage from the current note and pitchbend
-  state. Returns the state for threading"
+  state."
   (let [volts (+ state.volt_offset (volt.n2v state.note) state.pitchbend)]
-    (set_crow_out_volts state volts))
-  state)
+    (set_crow_out_volts state volts)))
 
 ; The base interface for crow out modes
 (local CrowOutMode {})
@@ -91,15 +85,15 @@
   (CrowOutMode.cleanup state))
 
 (fn CrowOutNote.midi.note_on [state msg]
-  (-> state
-      (set_crow_out_note msg.note)
-      (update_crow_out_voct)))
+  (doto state
+    (set_crow_out_note msg.note)
+    (update_crow_out_voct)))
 
 (fn CrowOutNote.midi.pitchbend [state msg]
   (when state.note
-    (-> state
-        (set_crow_out_pitchbend msg.val)
-        (update_crow_out_voct))))
+    (doto state
+      (set_crow_out_pitchbend msg.val)
+      (update_crow_out_voct))))
 
 ; A crow output in gate mode will go high when a MIDI note on message is
 ; received, and low when a midi note off message is received. The volt range
@@ -112,9 +106,9 @@
   (CrowOutMode.cleanup state))
 
 (fn CrowOutGate.midi.note_on [state msg]
-  (-> state
-      (set_crow_out_note msg.note)
-      (set_crow_out_volts state.volt_range)))
+  (doto state
+    (set_crow_out_note msg.note)
+    (set_crow_out_volts state.volt_range)))
 
 (fn CrowOutGate.midi.note_off [state msg]
   (when (= msg.note state.note)
@@ -145,9 +139,9 @@
 
 (fn CrowOutVelocity.midi.note_on [state msg]
   (let [volts (* state.volt_range (volt.cc2v msg.vel))]
-    (-> state
-        (set_crow_out_note msg.note)
-        (set_crow_out_volts volts))))
+    (doto state
+      (set_crow_out_note msg.note)
+      (set_crow_out_volts volts))))
 
 (fn CrowOutVelocity.midi.note_off [state msg]
   (when (= msg.note state.note)
@@ -229,21 +223,17 @@
   (.. :trinkets_crow_out output_index "_" param_suffix))
 
 (fn set_crow_out_midi_channel [state value]
-  "Update the selected midi channel for the crow output. Returns the state for
-  threading"
-  (set state.midi_channel value)
-  state)
+  "Update the selected midi channel for the crow output."
+  (set state.midi_channel value))
 
 (fn set_crow_out_slew_rate [state value]
-  "Update the crow output slew rate in seconds/volt. Returns the state for
-  threading"
+  "Update the crow output slew rate in seconds/volt."
   (set state.slew_rate value)
-  (tset crow.output state.output_index :slew value)
-  state)
+  (tset crow.output state.output_index :slew value))
 
 (fn set_crow_out_mode [state value]
   "Update the crow output mode. This will clean up the previous mode and
-  initialize the new mode. Returns the state for threading"
+  initialize the new mode."
   (when state.mode
     (state.mode.cleanup state)
     (each [_ suffix (ipairs state.mode.params)]
@@ -254,45 +244,38 @@
   (state.mode.init state)
   (each [_ suffix (ipairs CROW_OUT_MODE_PARAMS)]
     (params:show (get_crow_out_param_id state.output_index suffix)))
-  (_menu.rebuild_params)
-  state)
+  (_menu.rebuild_params))
 
 (fn set_crow_out_pitchbend_range [state value]
-  "Set the crow output note pitchbend range. Returns the state for threading"
+  "Set the crow output note pitchbend range."
   (set state.pitchbend_range value)
-  (state.mode.update state)
-  state)
+  (state.mode.update state))
 
 (fn set_crow_out_volt_offset [state value]
-  "Set the crow output volt offset. Returns the state for threading"
+  "Set the crow output volt offset."
   (set state.volt_offset value)
-  (state.mode.update state)
-  state)
+  (state.mode.update state))
 
 (fn set_crow_out_volt_range [state value]
-  "Set the crow output volt range. Returns the state for threading"
+  "Set the crow output volt range."
   (set state.volt_range value)
-  (state.mode.update state)
-  state)
+  (state.mode.update state))
 
 (fn set_crow_out_control [state value]
-  "Set the crow output control value. Returns the state for threading"
+  "Set the crow output control value."
   (when (= state.mode_name :CONTROL)
     (let [volts (+ state.volt_offset (* state.volt_range (volt.cc2v value)))]
-      (set_crow_out_volts state volts)))
-  state)
+      (set_crow_out_volts state volts))))
 
 (fn set_crow_out_pulse_duration [state value]
-  "Set the crow output trigger pulse duration. Returns the state for threading"
+  "Set the crow output trigger pulse duration."
   (set state.pulse_duration value)
-  (state.mode.update state)
-  state)
+  (state.mode.update state))
 
 (fn set_crow_out_clock_division [state value]
-  "Set the crow output clock division. Returns the state for threading"
+  "Set the crow output clock division."
   (set state.clock_division value)
-  (state.mode.update state)
-  state)
+  (state.mode.update state))
 
 (fn init_crow_out_state [output_index mode_index]
   "Initialize a new crow output state object with default values for the given
