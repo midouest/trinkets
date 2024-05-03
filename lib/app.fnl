@@ -19,8 +19,7 @@
 (fn midi_event [data]
   (let [msg (midi.to_msg data)]
     (when (not= msg.type :clock)
-      (each [_ state (ipairs _G.crow_out_states)]
-        (crow_out.update state msg)))))
+      (crow_out.update msg))))
 
 (fn get_midi_devices []
   (fcollect [i 1 (length midi.vports)]
