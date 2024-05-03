@@ -7,18 +7,27 @@
   (/ cc 127))
 
 (fn set_crow_out_volts [state volts]
+  "Set the voltage at the given crow output. Returns the state for threading"
   (tset crow.output state.output_index :volts volts)
   state)
 
 (fn reset_crow_out_volts [state]
+  "Set the voltage at the given crow output to zero. Returns the state for
+  threading"
   (set_crow_out_volts state 0)
   state)
 
 (fn set_crow_out_note [state note]
+  "Update the crow out state with the current midi note. Call
+  `update_crow_out_voct` to recalculate the output voltage from the current note
+  and pitchbend state. Returns the state for threading"
   (set state.note note)
   state)
 
 (fn set_crow_out_pitchbend [state value]
+  "Update the crow out state with the current pitchbend value. Call
+  `update_crow_out_voct` to recalculate the output voltage from the current note
+  and pitchbend state. Returns the state for threading"
   (let [pitchbend_range_v (/ state.pitchbend_range 12)
         pitchbend_normalized (/ (- value 8192) 8192)
         pitchbend_v (* pitchbend_range_v pitchbend_normalized)]
@@ -26,20 +35,35 @@
   state)
 
 (fn update_crow_out_voct [state]
+  "Recalculate the crow output voltage from the current note and pitchbend
+  state. Returns the state for threading"
   (let [volts (+ state.volt_offset (n2v state.note) state.pitchbend)]
     (set_crow_out_volts state volts))
   state)
 
+; The base interface for crow out modes
 (local CrowOutMode {})
 (set CrowOutMode.__index CrowOutMode)
 (fn CrowOutMode.new [params]
+  "Declare a new crow out mode. `params` are menu param suffixes that should be
+  visible for the mode."
   (setmetatable {:params (or params []) :midi {}} CrowOutMode))
 
-(fn CrowOutMode.init [_state])
-(fn CrowOutMode.update [_state])
+(fn CrowOutMode.init [_state]
+  "Called when the mode is about to be activated"
+  nil)
+
+(fn CrowOutMode.update [_state]
+  "Called when certain mode-dependent params are modified in the menu"
+  nil)
+
 (fn CrowOutMode.cleanup [state]
+  "Called when the mode is about to be deactivated, or a MIDI all notes
+  off message is received"
   (reset_crow_out_volts state))
 
+; Suffixes used to establish menu param IDs
+; Format: "trinkets_crow_out_n_suffix"
 (local MIDI_CHANNEL_SUFFIX :midi_channel)
 (local SLEW_RATE_SUFFIX :slew_rate)
 (local MODE_SUFFIX :mode)
@@ -50,6 +74,7 @@
 (local PULSE_DURATION_SUFFIX :pulse_duration)
 (local CLOCK_DIVISION_SUFFIX :clock_division)
 
+; Menu params that are conditionally visible based on the current mode
 (local CROW_OUT_MODE_PARAMS [PITCHBEND_RANGE_SUFFIX
                              VOLT_OFFSET_SUFFIX
                              VOLT_RANGE_SUFFIX
@@ -57,6 +82,11 @@
                              PULSE_DURATION_SUFFIX
                              CLOCK_DIVISION_SUFFIX])
 
+; A crow output in note mode will transmit the current MIDI note and pitchbend
+; as a volt-per-octave signal. The pitchbend range is used to control the
+; absolute range in semitones that a pitchbend message can affect. The volt
+; offset param is used to set the voltage of MIDI note 0. The voltage range is
+; always slightly more than 10 volts.
 (local CrowOutNote
        (CrowOutMode.new [PITCHBEND_RANGE_SUFFIX VOLT_OFFSET_SUFFIX]))
 
@@ -76,6 +106,10 @@
         (set_crow_out_pitchbend msg.val)
         (update_crow_out_voct))))
 
+; A crow output in gate mode will go high when a MIDI note on message is
+; received, and low when a midi note off message is received. The volt range
+; param is used to set the peak voltage of the gate signal. The gate signal
+; always returns to zero volts.
 (local CrowOutGate (CrowOutMode.new [VOLT_RANGE_SUFFIX]))
 
 (fn CrowOutGate.cleanup [state]
@@ -91,6 +125,11 @@
   (when (= msg.note state.note)
     (reset_crow_out_volts state)))
 
+; A crow output in trig mode will go high when a MIDI note on message is
+; received, and low after a short duration has passed. Trig mode is not affected
+; by note off messages. The volt range param is used to set the peak voltage of
+; the pulse signal. The pulse signal always returns to zero volts. The pulse
+; duration param controls the length of the pulse in seconds.
 (local CrowOutTrig (CrowOutMode.new [VOLT_RANGE_SUFFIX PULSE_DURATION_SUFFIX]))
 
 (fn CrowOutTrig.midi.note_on [state _msg]
@@ -100,6 +139,9 @@
     (set output.action action)
     (output)))
 
+; A crow output in velocity mode will transmit the velocity of a MIDI note on
+; message. The output will return to zero volts when note off is received. The
+; volt range param is used to scale the MIDI velocity value to volts.
 (local CrowOutVelocity (CrowOutMode.new [VOLT_RANGE_SUFFIX]))
 
 (fn CrowOutVelocity.cleanup [state]
@@ -116,10 +158,18 @@
   (when (= msg.note state.note)
     (reset_crow_out_volts state)))
 
+; A crow output in control mode will transmit the current value of the control
+; param as a control voltage. Use the Norns param mapping to map the control
+; param to a MIDI CC. The volt offset and range params are used to offset and
+; scale the control voltage, respectively.
 (local CrowOutControl (CrowOutMode.new [VOLT_OFFSET_SUFFIX
                                         VOLT_RANGE_SUFFIX
                                         CONTROL_SUFFIX]))
 
+; A crow output in clock mode will transmit a continuous clock pulse with 50%
+; duty cycle. The volt range param controls the peak voltage of the clock pulse.
+; The pulse always returns to zero volts when it goes low. The clock division
+; param is used to divide the primary clock into faster clock rates.
 (local CrowOutClock (CrowOutMode.new [VOLT_RANGE_SUFFIX CLOCK_DIVISION_SUFFIX]))
 
 (fn run_crow_out_clock [state]
@@ -141,6 +191,7 @@
     (set state.clock nil)
     (CrowOutMode.cleanup state)))
 
+; Mode names as they appear in the params menu
 (local NOTE_MODE_NAME :NOTE)
 (local GATE_MODE_NAME :GATE)
 (local TRIG_MODE_NAME :TRIG)
@@ -148,6 +199,7 @@
 (local CONTROL_MODE_NAME :CONTROL)
 (local CLOCK_MODE_NAME :CLOCK)
 
+; Mapping from mode names to modes used to look up the selected mode
 (local MODES {NOTE_MODE_NAME CrowOutNote
               GATE_MODE_NAME CrowOutGate
               TRIG_MODE_NAME CrowOutTrig
@@ -156,9 +208,12 @@
               CLOCK_MODE_NAME CrowOutClock})
 
 (fn find_index [list elem]
+  "Find the index of an element in a list. Returns nil if the element is not
+  found"
   (accumulate [index nil i val (ipairs list) &until (not= index nil)]
     (when (= val elem) i)))
 
+; Order of mode options in the params menu
 (local MODE_OPTIONS [NOTE_MODE_NAME
                      GATE_MODE_NAME
                      TRIG_MODE_NAME
@@ -166,28 +221,40 @@
                      CONTROL_MODE_NAME
                      CLOCK_MODE_NAME])
 
+; Look up the index of modes in the options to choose some sensible defaults
 (local NOTE_MODE (find_index MODE_OPTIONS NOTE_MODE_NAME))
 (local GATE_MODE (find_index MODE_OPTIONS GATE_MODE_NAME))
 (local VELOCITY_MODE (find_index MODE_OPTIONS VELOCITY_MODE_NAME))
 (local CONTROL_MODE (find_index MODE_OPTIONS CONTROL_MODE_NAME))
 
 (fn get_mode_name [mode_index]
+  "Get the name of the mode using its index in the params menu options"
   (. MODE_OPTIONS mode_index))
 
 (fn get_mode [mode_name]
+  "Look up the mode with the given name"
   (. MODES mode_name))
 
 (fn get_crow_out_param_id [output_index param_suffix]
+  "Get the param ID for a parameter of an output"
   (.. :trinkets_crow_out output_index "_" param_suffix))
 
 (fn set_crow_out_midi_channel [state value]
-  (set state.midi_channel value))
+  "Update the selected midi channel for the crow output. Returns the state for
+  threading"
+  (set state.midi_channel value)
+  state)
 
 (fn set_crow_out_slew_rate [state value]
+  "Update the crow output slew rate in seconds/volt. Returns the state for
+  threading"
   (set state.slew_rate value)
-  (tset crow.output state.output_index :slew value))
+  (tset crow.output state.output_index :slew value)
+  state)
 
 (fn set_crow_out_mode [state value]
+  "Update the crow output mode. This will clean up the previous mode and
+  initialize the new mode. Returns the state for threading"
   (when state.mode
     (state.mode.cleanup state)
     (each [_ suffix (ipairs state.mode.params)]
@@ -198,32 +265,49 @@
   (state.mode.init state)
   (each [_ suffix (ipairs CROW_OUT_MODE_PARAMS)]
     (params:show (get_crow_out_param_id state.output_index suffix)))
-  (_menu.rebuild_params))
+  (_menu.rebuild_params)
+  state)
 
 (fn set_crow_out_pitchbend_range [state value]
-  (set state.pitchbend_range value))
+  "Set the crow output note pitchbend range. Returns the state for threading"
+  (set state.pitchbend_range value)
+  (state.mode.update state)
+  state)
 
 (fn set_crow_out_volt_offset [state value]
+  "Set the crow output volt offset. Returns the state for threading"
   (set state.volt_offset value)
-  (state.mode.update state))
+  (state.mode.update state)
+  state)
 
 (fn set_crow_out_volt_range [state value]
+  "Set the crow output volt range. Returns the state for threading"
   (set state.volt_range value)
-  (state.mode.update state))
+  (state.mode.update state)
+  state)
 
 (fn set_crow_out_control [state value]
+  "Set the crow output control value. Returns the state for threading"
   (when (= state.mode_name :CONTROL)
     (let [volts (+ state.volt_offset (* state.volt_range (cc2v value)))]
-      (set_crow_out_volts state volts))))
+      (set_crow_out_volts state volts)))
+  state)
 
 (fn set_crow_out_pulse_duration [state value]
+  "Set the crow output trigger pulse duration. Returns the state for threading"
   (set state.pulse_duration value)
-  (state.mode.update state))
+  (state.mode.update state)
+  state)
 
 (fn set_crow_out_clock_division [state value]
-  (set state.clock_division value))
+  "Set the crow output clock division. Returns the state for threading"
+  (set state.clock_division value)
+  (state.mode.update state)
+  state)
 
 (fn init_crow_out_state [output_index mode_index]
+  "Initialize a new crow output state object with default values for the given
+  mode"
   (let [mode_name (get_mode_name mode_index)
         mode (get_mode mode_name)]
     {: output_index
@@ -331,6 +415,7 @@
                :default state.clock_division
                :action (partial set_crow_out_clock_division state)}))
 
+; Parameters to nest under each crow output group
 (local CROW_OUT_PARAM_GROUP
        [add_crow_out_midi_channel_param
         add_crow_out_slew_rate_param
@@ -343,6 +428,8 @@
         add_crow_out_clock_division_param])
 
 (fn add_crow_out [output_index mode_index]
+  "Initialize the crow output state and menu params with the given index and
+  default mode"
   (let [state (init_crow_out_state output_index mode_index)]
     (params:add_group (get_crow_out_param_id output_index :group)
                       (.. "OUTPUT " output_index) (length CROW_OUT_PARAM_GROUP))
@@ -350,20 +437,32 @@
       (add_param state))
     state))
 
+; Default mode for each crow output index when no pset has been saved
 (local DEFAULT_CROW_OUT_MODES [NOTE_MODE GATE_MODE VELOCITY_MODE CONTROL_MODE])
 
-(fn init []
-  (let [crow_out_states (icollect [output_index mode_index (ipairs DEFAULT_CROW_OUT_MODES)]
-                          (add_crow_out output_index mode_index))]
-    (set _G.crow_out_states crow_out_states)))
+; Local crow output states
+(var states nil)
 
-(fn update [state msg]
+(fn init []
+  "Initialize all crow outputs"
+  (let [s (icollect [output_index mode_index (ipairs DEFAULT_CROW_OUT_MODES)]
+            (add_crow_out output_index mode_index))]
+    (set states s))
+  states)
+
+(fn update_state [state msg]
+  "Update a single crow output state with the given MIDI message"
   (when (= msg.ch state.midi_channel)
     (if (and (= msg.type :cc) (= msg.cc 120))
         (state.mode.cleanup state)
         (let [mode_callback (. state.mode.midi msg.type)]
           (when mode_callback
             (mode_callback state msg))))))
+
+(fn update [msg]
+  "Update all crow output states with the given MIDI message"
+  (each [_ state (ipairs states)]
+    (update_state state msg)))
 
 {: init : update}
 
