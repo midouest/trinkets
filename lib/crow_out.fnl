@@ -415,13 +415,6 @@
 ; Local crow output states
 (var states nil)
 
-(fn init []
-  "Initialize all crow outputs"
-  (let [s (icollect [output_index mode_index (ipairs DEFAULT_CROW_OUT_MODES)]
-            (add_crow_out output_index mode_index))]
-    (set states s))
-  states)
-
 (fn update_state [state msg]
   "Update a single crow output state with the given MIDI message"
   (when (= msg.ch state.midi_channel)
@@ -436,9 +429,17 @@
   (each [_ state (ipairs states)]
     (update_state state msg)))
 
+(fn init [source]
+  "Initialize all crow outputs"
+  (source.add_destination {:id :crow :name :crow :callback update})
+  (let [s (icollect [output_index mode_index (ipairs DEFAULT_CROW_OUT_MODES)]
+            (add_crow_out output_index mode_index))]
+    (set states s))
+  states)
+
 (fn cleanup []
   "Reset all crow output states"
   (each [_ state (ipairs states)]
     (state.mode.cleanup state)))
 
-{: init : update : cleanup}
+{: init : cleanup}
