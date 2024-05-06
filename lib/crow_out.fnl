@@ -280,7 +280,8 @@
   "Initialize a new crow output state object with default values for the given
   mode"
   (let [mode_name (get_mode_name mode_index)
-        mode (get_mode mode_name)]
+        mode (get_mode mode_name)
+        volt_offset (if (= mode_index NOTE_MODE) -5 0)]
     {: output_index
      : mode_index
      : mode_name
@@ -288,7 +289,7 @@
      :midi_channel 1
      :slew_rate 0
      :pitchbend_range 2
-     :volt_offset 0
+     : volt_offset
      :volt_range 10
      :pulse_duration 0.005
      :clock_division 1
