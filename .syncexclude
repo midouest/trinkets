@@ -1,6 +1,0 @@
-.git
-.gitattributes
-.gitignore
-.vscode
-sync.sh
-.syncexclude

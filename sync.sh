@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-rsync -aPzv --progress --delete --exclude-from=".syncexclude" . "we@norns.local:/home/we/dust/code/trinkets"
+rsync -aPzv --progress --delete --include=trinkets.lua --include='lib/' --include='lib/*' --exclude='*' . 'we@norns.local:/home/we/dust/code/trinkets'
