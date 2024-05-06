@@ -1,0 +1,6 @@
+{
+  "editor.rulers": [80],
+  "vsc-fnlfmt.execPath": "/usr/local/bin/fnlfmt",
+  "fennel-lsx.server-version": "bundled",
+  "fennel-ls.extra-globals": "_menu _norns _path _startup arc audio cleanup clock controlspec coroutine crow debug enc engine grid hid include includefnl includelua inf key metro midi mix norns osc package params paramset paths poll redraw screen softcut string tab util wifi"
+}
