@@ -1,4 +1,3 @@
-(local list (includefnl :lib/list))
 (local volt (includefnl :lib/volt))
 
 (fn set_crow_out_volts [state volts]
@@ -205,10 +204,10 @@
                      CLOCK_MODE_NAME])
 
 ; Look up the index of modes in the options to choose some sensible defaults
-(local NOTE_MODE (list.find_index MODE_OPTIONS NOTE_MODE_NAME))
-(local GATE_MODE (list.find_index MODE_OPTIONS GATE_MODE_NAME))
-(local VELOCITY_MODE (list.find_index MODE_OPTIONS VELOCITY_MODE_NAME))
-(local CONTROL_MODE (list.find_index MODE_OPTIONS CONTROL_MODE_NAME))
+(local NOTE_MODE (tab.key MODE_OPTIONS NOTE_MODE_NAME))
+(local GATE_MODE (tab.key MODE_OPTIONS GATE_MODE_NAME))
+(local VELOCITY_MODE (tab.key MODE_OPTIONS VELOCITY_MODE_NAME))
+(local CONTROL_MODE (tab.key MODE_OPTIONS CONTROL_MODE_NAME))
 
 (fn get_mode_name [mode_index]
   "Get the name of the mode using its index in the params menu options"
@@ -442,4 +441,3 @@
     (state.mode.cleanup state)))
 
 {: init : update : cleanup}
-
