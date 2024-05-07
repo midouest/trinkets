@@ -70,6 +70,8 @@
                              PULSE_DURATION_SUFFIX
                              CLOCK_DIVISION_SUFFIX])
 
+(local CrowOutNoop (CrowOutMode.new))
+
 ; A crow output in note mode will transmit the current MIDI note and pitchbend
 ; as a volt-per-octave signal. The pitchbend range is used to control the
 ; absolute range in semitones that a pitchbend message can affect. The volt
@@ -180,6 +182,7 @@
     (CrowOutMode.cleanup state)))
 
 ; Mode names as they appear in the params menu
+(local OFF_MODE_NAME :OFF)
 (local NOTE_MODE_NAME :NOTE)
 (local GATE_MODE_NAME :GATE)
 (local TRIG_MODE_NAME :TRIG)
@@ -188,7 +191,8 @@
 (local CLOCK_MODE_NAME :CLOCK)
 
 ; Mapping from mode names to modes used to look up the selected mode
-(local MODES {NOTE_MODE_NAME CrowOutNote
+(local MODES {OFF_MODE_NAME CrowOutNoop
+              NOTE_MODE_NAME CrowOutNote
               GATE_MODE_NAME CrowOutGate
               TRIG_MODE_NAME CrowOutTrig
               VELOCITY_MODE_NAME CrowOutVelocity
@@ -196,7 +200,8 @@
               CLOCK_MODE_NAME CrowOutClock})
 
 ; Order of mode options in the params menu
-(local MODE_OPTIONS [NOTE_MODE_NAME
+(local MODE_OPTIONS [OFF_MODE_NAME
+                     NOTE_MODE_NAME
                      GATE_MODE_NAME
                      TRIG_MODE_NAME
                      VELOCITY_MODE_NAME
