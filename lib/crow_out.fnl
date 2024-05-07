@@ -240,13 +240,13 @@
   initialize the new mode."
   (when state.mode
     (state.mode.cleanup state)
-    (each [_ suffix (ipairs state.mode.params)]
+    (each [_ suffix (ipairs CROW_OUT_MODE_PARAMS)]
       (params:hide (get_crow_out_param_id state.output_index suffix))))
   (set state.mode_index value)
   (set state.mode_name (get_mode_name value))
   (set state.mode (get_mode state.mode_name))
   (state.mode.init state)
-  (each [_ suffix (ipairs CROW_OUT_MODE_PARAMS)]
+  (each [_ suffix (ipairs state.mode.params)]
     (params:show (get_crow_out_param_id state.output_index suffix)))
   (_menu.rebuild_params))
 
