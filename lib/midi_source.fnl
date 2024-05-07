@@ -14,13 +14,10 @@
     (set device.event (partial handle_midi_event source))
     (setmetatable source MIDISource)))
 
-(fn get_destinations [source]
-  (let [keys (icollect [k _ (pairs source.callbacks)] k)]
-    (table.sort keys)
-    keys))
-
 (fn update_destinations [source]
-  (set source.destinations (get_destinations source)))
+  (let [destinations (icollect [k _ (pairs source.callbacks)] k)]
+    (table.sort destinations)
+    (set source.destinations destinations)))
 
 (fn MIDISource.add_destination [source destination callback]
   (tset source.callbacks destination callback)
