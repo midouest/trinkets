@@ -1,0 +1,25 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "sync",
+      "type": "shell",
+      "command": "rsync -aPzv --progress --delete --include=trinkets.lua --include='lib/' --include='lib/*' --exclude='*' . 'we@norns.local:/home/we/dust/code/trinkets'"
+    },
+    {
+      "label": "reload",
+      "command": "${command:nornsREPL.script.reload}"
+    },
+    {
+      "label": "sync & reload",
+      "dependsOn": ["sync", "reload"],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
