@@ -8,7 +8,8 @@
   ((get_jf state :play_voice) channel pitch velocity))
 
 (fn all_notes_off [state]
-  (play_voice state 0 0 0))
+  (play_voice state 0 0 0)
+  (set state.voice (Voice.new state.polyphony)))
 
 (local MIDI_CHANNEL_SUFFIX :midi_channel)
 (local MODE_SUFFIX :mode)
@@ -24,7 +25,8 @@
 (fn JustFriendsMode.new []
   (setmetatable {:params [] :midi {}} JustFriendsMode))
 
-(fn JustFriendsMode.init [_state] nil)
+(fn JustFriendsMode.init [state]
+  (all_notes_off state))
 
 (fn JustFriendsMode.update [_state] nil)
 
@@ -36,6 +38,7 @@
 (local JustFriendsSynth (JustFriendsMode.new))
 
 (fn JustFriendsSynth.init [state]
+  (JustFriendsMode.init state)
   ((get_jf state :mode) 1))
 
 (fn JustFriendsSynth.cleanup [state]
@@ -132,7 +135,7 @@
 (fn update_state [state msg]
   (when (= msg.ch state.midi_channel)
     (if (and (= msg.type :cc) (= msg.cc 120))
-        (state.mode.cleanup state)
+        (state.mode.init state)
         (let [mode_callback (. state.mode.midi msg.type)]
           (when mode_callback
             (mode_callback state msg))))))

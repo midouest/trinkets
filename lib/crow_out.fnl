@@ -37,17 +37,17 @@
   visible for the mode."
   (setmetatable {:params (or params []) :midi {}} CrowOutMode))
 
-(fn CrowOutMode.init [_state]
-  "Called when the mode is about to be activated"
-  nil)
+(fn CrowOutMode.init [state]
+  "Called when the mode is about to be activated, or a MIDI all notes
+  off message is received"
+  (reset_crow_out_volts state))
 
 (fn CrowOutMode.update [_state]
   "Called when certain mode-dependent params are modified in the menu"
   nil)
 
 (fn CrowOutMode.cleanup [state]
-  "Called when the mode is about to be deactivated, or a MIDI all notes
-  off message is received"
+  "Called when the mode is about to be deactivated"
   (reset_crow_out_volts state))
 
 ; Suffixes used to establish menu param IDs
@@ -81,9 +81,9 @@
        (CrowOutMode.new [PITCHBEND_RANGE_SUFFIX VOLT_OFFSET_SUFFIX]))
 
 (fn CrowOutNote.cleanup [state]
+  (CrowOutMode.cleanup state)
   (set state.note nil)
-  (set state.pitchbend 0)
-  (CrowOutMode.cleanup state))
+  (set state.pitchbend 0))
 
 (fn CrowOutNote.midi.note_on [state msg]
   (doto state
@@ -103,8 +103,8 @@
 (local CrowOutGate (CrowOutMode.new [VOLT_RANGE_SUFFIX]))
 
 (fn CrowOutGate.cleanup [state]
-  (set state.note nil)
-  (CrowOutMode.cleanup state))
+  (CrowOutMode.cleanup state)
+  (set state.note nil))
 
 (fn CrowOutGate.midi.note_on [state msg]
   (doto state
@@ -135,8 +135,8 @@
 (local CrowOutVelocity (CrowOutMode.new [VOLT_RANGE_SUFFIX]))
 
 (fn CrowOutVelocity.cleanup [state]
-  (set state.note nil)
-  (CrowOutMode.cleanup state))
+  (CrowOutMode.cleanup state)
+  (set state.note nil))
 
 (fn CrowOutVelocity.midi.note_on [state msg]
   (let [volts (* state.volt_range (volt.cc2v msg.vel))]
@@ -170,16 +170,17 @@
     (reset_crow_out_volts state)))
 
 (fn CrowOutClock.init [state]
+  (CrowOutMode.init state)
   (let [coro (->> state
                   (partial run_crow_out_clock)
                   (clock.run))]
     (set state.clock coro)))
 
 (fn CrowOutClock.cleanup [state]
+  (CrowOutMode.cleanup state)
   (when state.clock
     (clock.cancel state.clock)
-    (set state.clock nil)
-    (CrowOutMode.cleanup state)))
+    (set state.clock nil)))
 
 ; Mode names as they appear in the params menu
 (local OFF_MODE_NAME :OFF)
@@ -424,7 +425,7 @@
   "Update a single crow output state with the given MIDI message"
   (when (= msg.ch state.midi_channel)
     (if (and (= msg.type :cc) (= msg.cc 120))
-        (state.mode.cleanup state)
+        (state.mode.init state)
         (let [mode_callback (. state.mode.midi msg.type)]
           (when mode_callback
             (mode_callback state msg))))))
