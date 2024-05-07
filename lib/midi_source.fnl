@@ -45,15 +45,13 @@
   (. midi_sources index))
 
 (fn get_source_action [destination callback]
-  (var prev_index nil)
+  (var prev_source nil)
   (fn [index]
-    (when prev_index
-      (let [prev_source (get_source prev_index)]
-        (prev_source:remove_destination destination)))
-    (set prev_index index)
+    (when prev_source
+      (prev_source:remove_destination destination))
     (let [source (get_source index)]
-      (when source
-        (source:add_destination destination callback)))))
+      (set prev_source source)
+      (source:add_destination destination callback))))
 
 (fn get_destination_param_id [destination_id]
   (.. :trinkets_ destination_id :_midi_in_device))
