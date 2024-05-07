@@ -47,7 +47,6 @@
         slot (state.voice:get)
         v8 (- (volt.n2v note) 5)
         vel (volt.cc2v msg.vel)]
-    (print slot.id)
     (state.voice:push note slot)
     (play_voice state slot.id v8 vel)))
 
@@ -56,7 +55,6 @@
         slot (state.voice:pop note)
         v8 (- (volt.n2v note) 5)]
     (when slot
-      (print slot.id)
       (state.voice:release slot)
       (play_voice state slot.id v8 0))))
 
