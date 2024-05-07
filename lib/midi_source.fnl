@@ -1,7 +1,6 @@
 (fn handle_midi_event [source data]
   (let [msg (midi.to_msg data)]
     (when (not= msg.type :clock)
-      (print msg.type)
       (each [_ destination (ipairs source.destinations)]
         (let [callback (. source.callbacks destination)]
           (callback msg))))))
