@@ -7,9 +7,22 @@
 (fn play_voice [state channel pitch velocity]
   ((get_jf state :play_voice) channel pitch velocity))
 
+(fn transpose [state pitchbend]
+  ((get_jf state :transpose) pitchbend))
+
 (fn all_notes_off [state]
   (play_voice state 0 0 0)
+  (transpose state 0)
   (set state.voice (Voice.new state.polyphony)))
+
+(fn get_just_friends_voct [note]
+  (- (volt.n2v note) 5))
+
+(fn get_just_friends_pitchbend [state value]
+  (let [pitchbend_range_v (/ state.pitchbend_range 12)
+        pitchbend_normalized (/ (- value 8192) 8192)
+        pitchbend_v (* pitchbend_range_v pitchbend_normalized)]
+    pitchbend_v))
 
 (local MIDI_CHANNEL_SUFFIX :midi_channel)
 (local MODE_SUFFIX :mode)
@@ -46,7 +59,7 @@
 (fn JustFriendsSynth.midi.note_on [state msg]
   (let [note msg.note
         slot (state.voice:get)
-        v8 (- (volt.n2v note) 5)
+        v8 (get_just_friends_voct note)
         vel (volt.cc2v msg.vel)]
     (state.voice:push note slot)
     (play_voice state slot.id v8 vel)))
@@ -54,13 +67,14 @@
 (fn JustFriendsSynth.midi.note_off [state msg]
   (let [note msg.note
         slot (state.voice:pop note)
-        v8 (- (volt.n2v note) 5)]
+        v8 (get_just_friends_voct note)]
     (when slot
       (state.voice:release slot)
       (play_voice state slot.id v8 0))))
 
-(fn JustFriendsSynth.midi.pitchbend [_state _msg]
-  nil)
+(fn JustFriendsSynth.midi.pitchbend [state msg]
+  (let [pitchbend (get_just_friends_pitchbend state msg.val)]
+    (transpose state pitchbend)))
 
 (local OFF_MODE_NAME :OFF)
 (local SYNTH_MODE_NAME :SYNTH)
@@ -89,7 +103,7 @@
      : polyphony
      :unison 1
      :voice (Voice.new polyphony)
-     :pitchbend {}}))
+     :pitchbend_range 2}))
 
 (fn get_just_friends_param_id [state suffix]
   (.. :trinkets_jf state.address "_" suffix))
