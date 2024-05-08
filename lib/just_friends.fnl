@@ -17,8 +17,6 @@
 (local RUN_SUFFIX :run)
 (local PITCHBEND_RANGE_SUFFIX :pitchbend_range)
 
-(local MPE_MIDI_CHANNEL 0)
-
 (local JustFriendsMode {})
 (set JustFriendsMode.__index JustFriendsMode)
 
@@ -94,10 +92,6 @@
 (fn get_just_friends_param_id [state suffix]
   (.. :trinkets_jf state.address "_" suffix))
 
-(fn format_midi_channel_param [param]
-  (let [value (param:get)]
-    (if (= value MPE_MIDI_CHANNEL) :mpe value)))
-
 (fn set_just_friends_midi_channel [state value]
   (set state.midi_channel value))
 
@@ -105,10 +99,9 @@
   (params:add {:type :number
                :id (get_just_friends_param_id state MIDI_CHANNEL_SUFFIX)
                :name "midi channel"
-               :min MPE_MIDI_CHANNEL
+               :min 1
                :max 16
                :default state.midi_channel
-               :formatter format_midi_channel_param
                :action (partial set_just_friends_midi_channel state)}))
 
 (fn set_just_friends_mode [state value]
