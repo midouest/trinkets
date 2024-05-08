@@ -59,7 +59,7 @@
       (state.voice:release slot)
       (play_voice state slot.id v8 0))))
 
-(fn JustFriendsSynth.midi.pitchbend [_state msg]
+(fn JustFriendsSynth.midi.pitchbend [_state _msg]
   nil)
 
 (local OFF_MODE_NAME :OFF)
@@ -84,6 +84,8 @@
      : mode_name
      : mode
      :midi_channel 1
+     :run_mode 0
+     :run 0
      : polyphony
      :unison 1
      :voice (Voice.new polyphony)
@@ -122,8 +124,54 @@
                :default state.mode_index
                :action (partial set_just_friends_mode state)}))
 
+(fn set_just_friends_run_mode [state value]
+  (let [run_mode (- value 1)]
+    (set state.run_mode run_mode)
+    ((get_jf state :run_mode) run_mode)))
+
+(fn add_just_friends_run_mode_param [state]
+  (params:add {:type :option
+               :id (get_just_friends_param_id state RUN_MODE_SUFFIX)
+               :name "run mode"
+               :options [:OFF :ON]
+               :default (+ state.run_mode 1)
+               :action (partial set_just_friends_run_mode state)}))
+
+(fn set_just_friends_run [state value]
+  (set state.run value)
+  ((get_jf state :run) value))
+
+(fn add_just_friends_run_param [state]
+  (params:add {:type :control
+               :id (get_just_friends_param_id state RUN_SUFFIX)
+               :name :run
+               :controlspec (controlspec.def {:min -5
+                                              :max 5
+                                              :warp :lin
+                                              :step 0
+                                              :default 0
+                                              :units :v})
+               :action (partial set_just_friends_run state)}))
+
+(fn set_just_friends_pitchbend_range [state value]
+  (set state.pitchbend_range value)
+  (state.mode.update state))
+
+(fn add_just_friends_pitchbend_param [state]
+  (params:add {:type :number
+               :id (get_just_friends_param_id state PITCHBEND_RANGE_SUFFIX)
+               :name "pitchbend range"
+               :min 0
+               :max 48
+               :default state.pitchbend_range
+               :action (partial set_just_friends_pitchbend_range state)}))
+
 (local JUST_FRIENDS_PARAM_GROUP
-       [add_just_friends_midi_channel_param add_just_friends_mode_param])
+       [add_just_friends_midi_channel_param
+        add_just_friends_mode_param
+        add_just_friends_run_mode_param
+        add_just_friends_run_param
+        add_just_friends_pitchbend_param])
 
 (fn update_state [state msg]
   (when (= msg.ch state.midi_channel)
